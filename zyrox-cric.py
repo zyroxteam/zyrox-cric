@@ -39,6 +39,10 @@ def c(code, text=""):
     return f"{C.get(code, '')}{text}{C['reset']}"
 
 
+def line():
+    print(c("violet", "  ───────────────────────────────────────────────"))
+
+
 def os_environ_check():
     return False
 
@@ -341,14 +345,17 @@ def cmd_watch(match_id, interval=20):
 def usage():
     print(c("bold", "\n  ZYROX CRICBUZZ — Live cricket scores CLI"))
     print(c("dim", "  reverse-engineered from cricbuzz.com (RSC payload)\n"))
+    print(c("gold", "  ⭐ NO ARGS = INTERACTIVE MODE (recommended)"))
+    print(c("dim", "     launch karo -> saare matches automatic numbered -> number chuno!\n"))
     print("  USAGE:")
-    print("    zyrox-cric.py live                  live/recent matches + scores")
-    print("    zyrox-cric.py scorecard <matchId>   full scorecard (batting+bowling)")
-    print("    zyrox-cric.py summary <matchId>     match summary")
-    print("    zyrox-cric.py watch <matchId>       auto-refresh score ticker")
-    print("    zyrox-cric.py search <query>        match/series search")
-    print("    zyrox-cric.py help                  ye help\n")
-    print(c("dim", "  Example:  zyrox-cric.py scorecard 144959\n"))
+    print("    zyrox-cric.py                     interactive mode (matches auto)")
+    print("    zyrox-cric.py live                live/recent matches + scores")
+    print("    zyrox-cric.py scorecard <matchId> full scorecard (batting+bowling)")
+    print("    zyrox-cric.py summary <matchId>   match summary")
+    print("    zyrox-cric.py watch <matchId>     auto-refresh score ticker")
+    print("    zyrox-cric.py search <query>      match/series search")
+    print("    zyrox-cric.py help                ye help\n")
+    print(c("dim", "  Example:  zyrox-cric.py            -> 1. TRE 158/5 vs SOU 159/4\n"))
 
 
 def cmd_search(query):
@@ -375,13 +382,138 @@ def cmd_search(query):
     return 0
 
 
+# ============================================================================
+# INTERACTIVE MODE — koi match ID nahi, bas number chuno!
+# ============================================================================
+def fetch_matches():
+    """Returns list of match summaries or None on failure."""
+    try:
+        html = fetch(BASE + "/")
+        data = rsc_data(html)
+        mj = extract_json(data, '"matchesList"')
+        if not mj:
+            return None
+        return [get_match_summary(m) for m in json.loads(mj).get("matches", [])]
+    except Exception as e:
+        print(c("red", f"  [-] Fetch fail: {e}"))
+        return None
+
+
+def show_matches(matches):
+    """Numbered list — automatic, koi ID nahi."""
+    print(c("bold", "\n  🏏 ZYROX CRICBUZZ — LIVE MATCHES"))
+    print(c("dim", "  ───────────────────────────────────────────────"))
+    if not matches:
+        print(c("gold", "  [!] Koi match nahi mila — network check karo ya baad me try"))
+        return
+    for i, m in enumerate(matches, 1):
+        ico = {"live": "🔴", "preview": "⏳", "complete": "✅"}.get(
+            (m["state"] or "").lower(), "•")
+        print(f"  {c('cyan', f'{i:>2}.')} {ico} {c('bold', m['t1'])} {m['s1']} vs "
+              f"{c('bold', m['t2'])} {m['s2']}")
+        print(c("dim", f"      {m['series']} · {m['status']}"))
+    print(c("dim", "  ───────────────────────────────────────────────"))
+
+
+def pick_int(prompt, lo, hi):
+    """Safe integer input."""
+    while True:
+        try:
+            v = input(prompt).strip()
+        except (EOFError, KeyboardInterrupt):
+            return -1
+        if v in ("q", "Q", "exit", "0"):
+            return -1
+        if v.isdigit() and lo <= int(v) <= hi:
+            return int(v)
+        print(c("gold", f"  [!] {lo}-{hi} me se chuno (0 = back)"))
+        print()
+
+
+def match_menu(matches):
+    """Select match number -> submenu."""
+    while True:
+        show_matches(matches)
+        print(c("dim", "  'q' / 0 = exit   ·   'r' = refresh matches"))
+        choice = input(c("cyan", "\n  match no > ")).strip().lower()
+        if choice in ("q", "0", "exit"):
+            return False
+        if choice == "r":
+            print(c("cyan", "\n  [*] Refreshing matches…"))
+            new = fetch_matches()
+            if new:
+                matches[:] = new
+            continue
+        if not choice.isdigit() or not (1 <= int(choice) <= len(matches)):
+            print(c("gold", f"  [!] 1-{len(matches)} me se chuno"))
+            continue
+        m = matches[int(choice) - 1]
+        if not match_actions(m):
+            return False
+
+
+def match_actions(m):
+    """Submenu for a selected match."""
+    while True:
+        print()
+        line()
+        print(c("bold", f"  {m['t1']} {m['s1']} vs {m['t2']} {m['s2']}"))
+        print(c("dim", f"  {m['status']}"))
+        line()
+        print(f"  {c('cyan', '1)')} 📋 Scorecard")
+        print(f"  {c('cyan', '2)')} 📊 Summary")
+        print(f"  {c('cyan', '3)')} 👁 Live watch (auto-refresh)")
+        print(f"  {c('cyan', '4)')} 🔄 Refresh score")
+        print(f"  {c('cyan', '0)')} ⬅ Back to matches   ·   q) Exit")
+        ch = input(c("cyan", "\n  > ")).strip().lower()
+        if ch in ("q", "exit"):
+            return False
+        if ch == "0":
+            return True
+        if ch == "1":
+            cmd_scorecard(m["id"])
+        elif ch == "2":
+            cmd_summary(m["id"])
+        elif ch == "3":
+            cmd_watch(m["id"])
+        elif ch == "4":
+            new = fetch_matches()
+            if new:
+                for nm in new:
+                    if str(nm["id"]) == str(m["id"]):
+                        m.update(nm)
+                        break
+            print(c("cyan", f"  [*] Refreshed: {m['t1']} {m['s1']} vs {m['t2']} {m['s2']} — {m['status']}"))
+        else:
+            print(c("gold", "  [!] 0-4 me se chuno"))
+
+
+def interactive():
+    """Main interactive loop — launch pe automatic matches."""
+    try:
+        print(c("bold", "\n  ⚡ ZYROX CRICBUZZ — fetching live matches…"))
+        matches = fetch_matches()
+        if matches is None:
+            print(c("red", "  [-] Fetch fail — internet check karo, phir dobara chalao"))
+            return 1
+        match_menu(matches)
+        print(c("dim", "\n  Bye! 🏏"))
+        return 0
+    except KeyboardInterrupt:
+        print(c("dim", "\n  Bye! 🏏"))
+        return 0
+
+
 def main():
     global NO_COLOR
     if "--no-color" in sys.argv:
         NO_COLOR = True
         sys.argv.remove("--no-color")
     args = sys.argv[1:]
-    if not args or args[0] in ("help", "-h", "--help"):
+    # NO ARGS = INTERACTIVE MODE (automatic matches, koi ID nahi)
+    if not args:
+        return interactive()
+    if args[0] in ("help", "-h", "--help"):
         usage()
         return 0
     cmd = args[0]

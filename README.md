@@ -10,12 +10,54 @@ Termux, Linux, macOS, Windows sab pe chalta hai.
 
 | Feature | Command | Status |
 |---|---|---|
+| ⭐ **INTERACTIVE MODE** — launch karte hi saare matches automatic, number chuno! | *(koi arg nahi)* | ✅ |
 | 🏏 **Live & recent matches** + scores | `live` | ✅ |
 | 📋 **Full scorecard** (batting + bowling, innings-wise) | `scorecard <id>` | ✅ |
 | 📊 **Match summary** (teams, status, venue, series) | `summary <id>` | ✅ |
 | 👁 **Live watch** — auto-refresh score ticker | `watch <id>` | ✅ |
 | 🔎 **Search** — team/series filter | `search <query>` | ✅ |
 | 🎨 Neon ANSI output | sab commands | ✅ |
+
+## 🕹 Interactive Mode (recommended — koi match ID nahi!)
+
+```bash
+./zyrox-cric.py        # ya bas:  zyrox-cric
+```
+
+Launch karte hi **saare matches automatic numbered list** me aate hain:
+
+```
+⚡ ZYROX CRICBUZZ — fetching live matches…
+
+🏏 ZYROX CRICBUZZ — LIVE MATCHES
+───────────────────────────────────────────────
+ 1. ✅ TRE 158/5 (100ov) vs SOU 159/4 (97ov)
+      The Hundred Men's Competition 2026 · Southern Brave won by 6 wkts
+ 2. ✅ IRE 206/10 (46.3ov) vs AFG 207/7 (44.5ov)
+      Afghanistan tour of Ireland, 2026 · Afghanistan won by 3 wkts
+ 3. ✅ SOUW 117/5 (100ov) vs TREW 118/7 (98ov)
+      ...
+───────────────────────────────────────────────
+'q' / 0 = exit   ·   'r' = refresh matches
+
+match no > 1        ← bas number chuno!
+
+───────────────────────────────────────────────
+TRE 158/5 (100ov) vs SOU 159/4 (97ov)
+Southern Brave won by 6 wkts
+───────────────────────────────────────────────
+ 1) 📋 Scorecard
+ 2) 📊 Summary
+ 3) 👁 Live watch (auto-refresh)
+ 4) 🔄 Refresh score
+ 0) ⬅ Back to matches   ·   q) Exit
+
+>
+```
+
+- **Koi match ID yaad nahi rakhna** — sirf number
+- `r` se matches refresh
+- Har match pe: scorecard / summary / live watch / refresh
 
 ## 🚀 Install
 
@@ -45,6 +87,7 @@ python zyrox-cric.py live
 ## 🕹 Usage
 
 ```bash
+./zyrox-cric.py                        # ⭐ INTERACTIVE (matches auto)
 ./zyrox-cric.py live                          # live/recent matches
 ./zyrox-cric.py scorecard 144959              # full scorecard
 ./zyrox-cric.py summary 144959                # match summary
